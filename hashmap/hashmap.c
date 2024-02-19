@@ -67,34 +67,40 @@ int hashmap_put(Hashmap* map, char* key, void* value) {
 	Node* current = map->hashmap[index];
 	Node* node_to_add = node_create(key, value);
 
-	if (current != NULL) {
-		while (current->next != NULL) {
-			current = current->next;
-		}
-		current->next = node_to_add;
-	}
-	else {
+	if (current == NULL) {
 		map->hashmap[index] = node_to_add;
+		map->size += 1;
+		return 0;
 	}
-
-	map->size += 1;
-
-	return 0;
-}
-
-int hashmap_get(Hashmap* map, char* key, void** value) {
-	size_t index = hash(key);
-	Node* current = map->hashmap[index];
 
 	while (current != NULL) {
 		if (strcmp(current->key, key) == 0) {
-			*value = current->value;
+			current->value = value;
+			free(node_to_add);
 			return 0;
 		}
+
+		if (current->next == NULL) {
+			current->next = node_to_add;
+			map->size += 1;
+			return 0;
+		}
+
 		current = current->next;
 	}
 
 	return 1;
+}
+
+void* hashmap_get(Hashmap* map, char* key) {
+	size_t index = hash(key);
+	Node* current = map->hashmap[index];
+
+	while (current != NULL && strcmp(current->key, key) != 0) {
+		current = current->next;
+	}
+
+	return current == NULL ? NULL : current->value;
 }
 
 int hashmap_remove(Hashmap* map, char* key) {
@@ -145,6 +151,26 @@ void hashmap_free(Hashmap* map) {
 	free(map);
 }
 
+void hashmap_print(Hashmap* map) {
+	for (size_t i = 0; i < HASHMAP_SIZE; i++) {
+		Node* current_node = map->hashmap[i];
+
+		if (current_node == NULL) {
+			printf("%zu -> %d \n", i, 0);
+			continue;
+		}
+
+		printf("%zu - %s -> %d ", i, current_node->key, 1);
+
+		while (current_node != NULL && current_node->next != NULL) {
+			printf("%d ", 1);
+			current_node = current_node->next;
+		}
+
+		printf("\n");
+	}
+}
+
 typedef struct Person {
 	char name[50];
 	int age;
@@ -152,7 +178,6 @@ typedef struct Person {
 
 void main() {
 	Hashmap* x = hashmap_create();
-
 	printf("current size is - %zu \n", hashmap_size(x));
 
 
@@ -161,15 +186,13 @@ void main() {
 		exit(1);
 	}
 
-	void* value;
-
-	if (hashmap_get(x, "two", &value) != 0) {
-		fprintf(stderr, "error: value not found");
+	if (hashmap_put(x, "two", "fuck the police1") != 0) {
+		fprintf(stderr, "error: index already in use");
 		exit(1);
 	}
-	else {
-		printf("%s \n", (char*)value);
-	}
+
+	char* value = hashmap_get(x, "two");
+	printf("%s \n", value);
 
 	Person y;
 	strcpy_s(y.name, sizeof(y.name), "Sam");
@@ -180,43 +203,25 @@ void main() {
 		exit(1);
 	}
 
-	void* v;
-
-	if (hashmap_get(x, "x", &v) != 0) {
-		fprintf(stderr, "error: value not found");
-		exit(1);
-	}
-	else {
-		Person* a = (Person*)v;
-		printf("%s - %d\n", a->name, a->age);
-	}
+	Person* v = hashmap_get(x, "x");
+	printf("%s - %d\n", v->name, v->age);
 
 
-	if (hashmap_remove(x, "two") != 0) {
-		fprintf(stderr, "error: index already in use");
-		exit(1);
-	}
+	//if (hashmap_remove(x, "two") != 0) {
+	//	fprintf(stderr, "error: index already in use");
+	//	exit(1);
+	//}
 
-	void* d;
-
-	if (hashmap_get(x, "two", &d) != 0) {
-		//fprintf(stderr, "error: value not found");
-		//exit(1);
-
-		printf("value not found \n");
-	}
-	else {
-		printf("%s \n", (char*)d);
-	}
-
+	char* d = hashmap_get(x, "two");
+	printf("%s \n", d);
 
 	printf("current size is - %zu \n", hashmap_size(x));
 
+	//printf("%zu \n", hash("hello"));
+	//printf("%zu \n", hash("asd"));
+	//printf("%zu \n", hash("hlo"));
+	//printf("%zu \n", hash("hlo"));
 
-	printf("%zu \n", hash("hello"));
-	printf("%zu \n", hash("asd"));
-	printf("%zu \n", hash("hlo"));
-	printf("%zu \n", hash("hlo"));
-
+	hashmap_print(x);
 	hashmap_free(x);
 }
