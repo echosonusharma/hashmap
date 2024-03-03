@@ -39,14 +39,19 @@ extern "C" {
 		return node;
 	}
 
+	static inline size_t calculateIndex(size_t capacity, size_t hash) {
+		return hash & (capacity - 1);
+	}
+
+	// http://www.cse.yorku.ca/~oz/hash.html
 	static size_t hash(Hashmap* map, char* key) {
-		size_t hash = 5778;
+		unsigned long h = 5381;
+		int c;
 
-		for (size_t i = 0; i < strlen(key); i++) {
-			hash += (size_t)((int)key[i] * 10) / 3;
-		}
+		while (c = *key++)
+			h = ((h << 5) + h) + c; /* hash * 33 + c */
 
-		return hash % map->capacity;
+		return calculateIndex(map->capacity, h);
 	}
 
 	Hashmap* hashmap_create(size_t initialCapacity) {
@@ -55,7 +60,7 @@ extern "C" {
 			return NULL;
 		}
 		map->capacity = initialCapacity;
-		map->hashmap = calloc(map->capacity, sizeof(Node*));
+		map->hashmap = (Node**)calloc(map->capacity, sizeof(Node*));
 		if (map->hashmap == NULL) {
 			free(map);
 			return NULL;
@@ -155,23 +160,29 @@ extern "C" {
 	}
 
 	void hashmap_print(Hashmap* map) {
+		size_t unused_blocks = 0;
+		size_t collisions = 0;
+
 		for (size_t i = 0; i < map->capacity; i++) {
 			Node* current_node = map->hashmap[i];
 
 			if (current_node == NULL) {
-				printf("%zu -> %d \n", i, 0);
+				unused_blocks += 1;
 				continue;
 			}
 
-			printf("%zu - %s -> %d ", i, current_node->key, 1);
-
 			while (current_node != NULL && current_node->next != NULL) {
-				printf("%d ", 1);
+				collisions += 1;
 				current_node = current_node->next;
 			}
-
-			printf("\n");
 		}
+
+		printf("\n");
+		printf("TOTAL BLOCKS : %zu \n", map->capacity);
+		printf("UNUSED BLOCKS : %zu \n", unused_blocks);
+		printf("ITEMS STORED : %zu \n", map->size);
+		printf("COLLISIONS : %zu (%.2f%%) \n", collisions, ((double)collisions / (double)map->size) * 100);
+		printf("\n");
 	}
 
 #ifdef __cplusplus
