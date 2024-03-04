@@ -6,7 +6,7 @@ typedef struct Person {
 } Person;
 
 int main(int argc, char* argv[]) {
-	Hashmap* map = hashmap_create(1000);
+	Hashmap* map = hashmap_create(10);
 
 	hashmap_put(map, "sam", "altman");
 	hashmap_put(map, "sam", "altman1");
@@ -14,8 +14,8 @@ int main(int argc, char* argv[]) {
 	hashmap_put(map, "sam", "altman3");
 	hashmap_put(map, "sam", "altman4");
 
-	char key[100];
-	for (size_t i = 0; i < 1000; i++) {
+	char key[50];
+	for (size_t i = 0; i < 10000; i++) {
 		sprintf_s(key, sizeof(key), "sam%zu", i);
 		hashmap_put(map, key, "altman");
 	}

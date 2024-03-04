@@ -1,6 +1,10 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
+#ifndef LOAD_FACTOR
+#define LOAD_FACTOR 0.75 
+#endif
+
 // prevent name mangling
 #ifdef __cplusplus
 extern "C" {
@@ -12,17 +16,18 @@ extern "C" {
 
 	typedef struct Node {
 		char* key;
+		int hash;
 		void* value;
 		struct Node* next;
 	} Node;
 
 	typedef struct Hashmap {
-		Node** hashmap;
+		Node** hashTable;
 		size_t size;
 		size_t capacity;
 	} Hashmap;
 
-	static Node* node_create(void* key, void* value) {
+	static Node* node_create(void* key, void* value, size_t h) {
 		Node* node = (Node*)malloc(sizeof(Node));
 		if (node == NULL) {
 			return NULL;
@@ -35,23 +40,51 @@ extern "C" {
 		}
 		strcpy_s(node->key, sizeof(char) * strlen((char*)key) + 1, (char*)key);
 		node->value = value;
+		node->hash = h;
 		node->next = NULL;
 		return node;
 	}
 
-	static inline size_t calculateIndex(size_t capacity, size_t hash) {
+	static inline size_t calculate_index(size_t capacity, size_t hash) {
 		return hash & (capacity - 1);
 	}
 
-	// http://www.cse.yorku.ca/~oz/hash.html
-	static size_t hash(Hashmap* map, char* key) {
+	static void expand_capacity(Hashmap* map) {
+		if (map->size < (map->capacity * LOAD_FACTOR)) {
+			return;
+		}
+
+		size_t new_capacity = map->capacity << 1;
+		Node** new_hashTable = (Node**)calloc(new_capacity, sizeof(Node*));
+		if (new_hashTable == NULL) {
+			return;
+		}
+
+		for (size_t i = 0; i < map->capacity; i++) {
+			Node* current = map->hashTable[i];
+			while (current != NULL) {
+				Node* next = current->next;
+				size_t idx = calculate_index(new_capacity, current->hash);
+				current->next = new_hashTable[idx];
+				new_hashTable[idx] = current;
+				current = next;
+			}
+		}
+
+		free(map->hashTable);
+		map->hashTable = new_hashTable;
+		map->capacity = new_capacity;
+	}
+
+	// hash fn source - http://www.cse.yorku.ca/~oz/hash.html
+	static size_t hash(char* key) {
 		unsigned long h = 5381;
 		int c;
 
 		while (c = *key++)
-			h = ((h << 5) + h) + c; /* hash * 33 + c */
+			h = ((h << 5) + h) + c;
 
-		return calculateIndex(map->capacity, h);
+		return h;
 	}
 
 	Hashmap* hashmap_create(size_t initialCapacity) {
@@ -60,8 +93,8 @@ extern "C" {
 			return NULL;
 		}
 		map->capacity = initialCapacity;
-		map->hashmap = (Node**)calloc(map->capacity, sizeof(Node*));
-		if (map->hashmap == NULL) {
+		map->hashTable = (Node**)calloc(map->capacity, sizeof(Node*));
+		if (map->hashTable == NULL) {
 			free(map);
 			return NULL;
 		}
@@ -71,13 +104,18 @@ extern "C" {
 	}
 
 	int hashmap_put(Hashmap* map, char* key, void* value) {
-		size_t index = hash(map, key);
-		Node* current = map->hashmap[index];
-		Node* node_to_add = node_create(key, value);
+		size_t h = hash(key);
+		size_t idx = calculate_index(map->capacity, h);
+		Node* current = map->hashTable[idx];
+		Node* node_to_add = node_create(key, value, h);
+		if (node_to_add == NULL) {
+			return 1;
+		}
 
 		if (current == NULL) {
-			map->hashmap[index] = node_to_add;
+			map->hashTable[idx] = node_to_add;
 			map->size += 1;
+			expand_capacity(map);
 			return 0;
 		}
 
@@ -91,6 +129,7 @@ extern "C" {
 			if (current->next == NULL) {
 				current->next = node_to_add;
 				map->size += 1;
+				expand_capacity(map);
 				return 0;
 			}
 
@@ -101,8 +140,8 @@ extern "C" {
 	}
 
 	void* hashmap_get(Hashmap* map, char* key) {
-		size_t index = hash(map, key);
-		Node* current = map->hashmap[index];
+		size_t index = calculate_index(map->capacity, hash(key));
+		Node* current = map->hashTable[index];
 
 		while (current != NULL && strcmp(current->key, key) != 0) {
 			current = current->next;
@@ -112,8 +151,8 @@ extern "C" {
 	}
 
 	int hashmap_remove(Hashmap* map, char* key) {
-		size_t index = hash(map, key);
-		Node* current = map->hashmap[index];
+		size_t index = calculate_index(map->capacity, hash(key));
+		Node* current = map->hashTable[index];
 		Node* node_to_remove;
 
 		if (current == NULL) {
@@ -121,7 +160,7 @@ extern "C" {
 		}
 
 		if (strcmp(current->key, key) == 0) {
-			map->hashmap[index] = current->next;
+			map->hashTable[index] = current->next;
 			node_to_remove = current;
 		}
 		else {
@@ -146,7 +185,7 @@ extern "C" {
 
 	void hashmap_free(Hashmap* map) {
 		for (size_t i = 0; i < map->capacity; i++) {
-			Node* current_node = map->hashmap[i];
+			Node* current_node = map->hashTable[i];
 
 			while (current_node != NULL) {
 				Node* next_node = current_node->next;
@@ -164,7 +203,7 @@ extern "C" {
 		size_t collisions = 0;
 
 		for (size_t i = 0; i < map->capacity; i++) {
-			Node* current_node = map->hashmap[i];
+			Node* current_node = map->hashTable[i];
 
 			if (current_node == NULL) {
 				unused_blocks += 1;
