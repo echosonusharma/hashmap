@@ -7,7 +7,7 @@ typedef struct Person {
 	int age;
 } Person;
 
-int main(int argc, char* argv[]) {
+int main() {
 	Hashmap* map = hashmap_create(10);
 
 	hashmap_put(map, "sam", "altman");

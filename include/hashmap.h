@@ -13,6 +13,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "siphash.h"
 
 	typedef struct Node {
 		char* key;
@@ -79,15 +80,13 @@ extern "C" {
 		map->capacity = new_capacity;
 	}
 
-	// hash fn source - http://www.cse.yorku.ca/~oz/hash.html
 	static size_t hash(char* key) {
-		unsigned long h = 5381;
-		int c;
+	const uint8_t k[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+													 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
 
-		while (c = *key++)
-			h = ((h << 5) + h) + c;
-
-		return h;
+	unsigned long data_len = strlen(key);
+	uint64_t h = siphash((const uint8_t *)key, data_len, k);
+	return (size_t)h;
 	}
 
 	Hashmap* hashmap_create(size_t initialCapacity) {

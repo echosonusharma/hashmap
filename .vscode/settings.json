@@ -1,6 +1,8 @@
 {
   "files.associations": {
-    "hashmap.h": "c"
+    "hashmap.h": "c",
+    "stddef.h": "c",
+    "siphash.h": "c"
   },
   "C_Cpp.errorSquiggles": "enabled"
 }
