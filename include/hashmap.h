@@ -13,6 +13,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "siphash.h"
 
 	typedef struct Node {
 		char* key;
@@ -32,13 +33,16 @@ extern "C" {
 		if (node == NULL) {
 			return NULL;
 		}
+
 		// +1 is for null termination char
-		node->key = (char*)malloc(sizeof(char) * (strlen((char*)key) + 1));
+		size_t key_len = strlen((char*)key) + 1;
+		node->key = (char*)malloc(sizeof(char) * key_len);
 		if (node->key == NULL) {
 			free(node);
 			return NULL;
 		}
-		strcpy_s(node->key, sizeof(char) * strlen((char*)key) + 1, (char*)key);
+
+		strncpy(node->key, (char*)key, key_len);
 		node->value = value;
 		node->hash = h;
 		node->next = NULL;
@@ -76,15 +80,13 @@ extern "C" {
 		map->capacity = new_capacity;
 	}
 
-	// hash fn source - http://www.cse.yorku.ca/~oz/hash.html
 	static size_t hash(char* key) {
-		unsigned long h = 5381;
-		int c;
+	const uint8_t k[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+													 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
 
-		while (c = *key++)
-			h = ((h << 5) + h) + c;
-
-		return h;
+	unsigned long data_len = strlen(key);
+	uint64_t h = siphash((const uint8_t *)key, data_len, k);
+	return (size_t)h;
 	}
 
 	Hashmap* hashmap_create(size_t initialCapacity) {
