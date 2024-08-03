@@ -3,12 +3,13 @@ CFLAGS = -Wall -Wextra -std=c11 -Iinclude
 
 # Source files
 SRCS = src/main.c
-# Object files are now prefixed with obj/ to indicate they should be placed in an obj directory
-OBJS = $(SRCS:.c=.o)
-# Executable is now placed in the bin directory
+# Specify a separate directory for object files
+OBJ_DIR = build
+OBJS = $(addprefix $(OBJ_DIR)/,$(notdir $(SRCS:.c=.o)))
 EXEC = bin/hashmap
 
-# Ensure the bin directory exists
+# Ensure the directories exist
+$(shell mkdir -p $(OBJ_DIR))
 $(shell mkdir -p bin)
 
 all: $(EXEC)
@@ -16,13 +17,14 @@ all: $(EXEC)
 $(EXEC): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-%.o: %.c
+# Pattern rule for compiling C source files into object files in the specified OBJ_DIR
+$(OBJ_DIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 run: $(EXEC)
 	./$(EXEC)
 
 clean:
-	rm -f $(OBJS) $(EXEC)
+	rm -rf $(OBJ_DIR) $(EXEC)
 
 .PHONY: all clean run
