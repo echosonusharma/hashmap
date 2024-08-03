@@ -32,13 +32,16 @@ extern "C" {
 		if (node == NULL) {
 			return NULL;
 		}
+
 		// +1 is for null termination char
-		node->key = (char*)malloc(sizeof(char) * (strlen((char*)key) + 1));
+		size_t key_len = strlen((char*)key) + 1;
+		node->key = (char*)malloc(sizeof(char) * key_len);
 		if (node->key == NULL) {
 			free(node);
 			return NULL;
 		}
-		strcpy_s(node->key, sizeof(char) * strlen((char*)key) + 1, (char*)key);
+
+		strncpy(node->key, (char*)key, key_len);
 		node->value = value;
 		node->hash = h;
 		node->next = NULL;

@@ -1,4 +1,6 @@
 #include "hashmap.h"
+#include <stdio.h>
+#include <string.h>
 
 typedef struct Person {
 	char name[50];
@@ -16,7 +18,7 @@ int main(int argc, char* argv[]) {
 
 	char key[50];
 	for (size_t i = 0; i < 10000; i++) {
-		sprintf_s(key, sizeof(key), "sam%zu", i);
+		snprintf(key, sizeof(key), "sam%zu", i);
 		hashmap_put(map, key, "altman");
 	}
 
@@ -24,7 +26,7 @@ int main(int argc, char* argv[]) {
 	printf("%s \n", value);
 
 	Person y = { .age = 25 };
-	strcpy_s(y.name, sizeof(y.name), "sam");
+	strncpy(y.name, "sam", sizeof(y.name));
 
 	hashmap_put(map, "xyz", &y);
 
